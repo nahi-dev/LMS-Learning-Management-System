@@ -13,6 +13,9 @@ app.use(cors());
 app.get("/", (req, res) => {
   res.json({ message: "Hello world" });
 });
+app.get("/clerk", (req, res) => {
+  res.json("clerk route");
+});
 app.post("/clerk", express.json(), clerkwebhooks);
 // Port
 app.listen(PORT, async () => {

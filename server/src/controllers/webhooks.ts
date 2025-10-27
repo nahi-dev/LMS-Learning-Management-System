@@ -8,12 +8,16 @@ import { CLERK_WEBHOOK_SECRET } from "../config/env";
 
 export const clerkwebhooks = async (req: any, res: any) => {
   try {
-    const whook = new Webhook(CLERK_WEBHOOK_SECRET!);
-    await whook.verify(JSON.stringify(req.body), {
-      "svix-id": req.headers["svix-id"] as string,
-      "svix-timestamp": req.headers["svix-timestamp"] as string,
-      "svix-signature": req.headers["svix-signature"] as string,
-    });
+    if (CLERK_WEBHOOK_SECRET) {
+      const whook = new Webhook(CLERK_WEBHOOK_SECRET!);
+      await whook.verify(JSON.stringify(req.body), {
+        "svix-id": req.headers["svix-id"] as string,
+        "svix-timestamp": req.headers["svix-timestamp"] as string,
+        "svix-signature": req.headers["svix-signature"] as string,
+      });
+    } else {
+      console.log("CLERK_WEBHOOK_SECRET is empty");
+    }
     const { data, type } = req.body;
     switch (type) {
       case "user.created": {
@@ -21,7 +25,7 @@ export const clerkwebhooks = async (req: any, res: any) => {
           _id: data.id,
           email: data.email_addresses[0].email_address,
           name: data.first_name + " " + data.last_name,
-          imageUrl: data.image_url,
+          imageUrl: data.image_url || "",
         };
         await User.create(userData);
         res.json({});
@@ -31,7 +35,7 @@ export const clerkwebhooks = async (req: any, res: any) => {
         const userData = {
           email: data.email_addresses[0].email_address,
           name: data.first_name + " " + data.last_name,
-          imageUrl: data.image_url,
+          imageUrl: data.image_url || "",
         };
         await User.findByIdAndUpdate(data.id, userData);
         res.json({});
