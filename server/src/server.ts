@@ -8,7 +8,10 @@ const app = express();
 
 // Middlewares
 app.use(cors());
-
+app.use((req, res, next) => {
+  console.log(`Incoming ${req.method} request to: ${req.url}`);
+  next();
+});
 // Routes
 app.get("/", (req, res) => {
   res.json({ message: "Hello world" });
