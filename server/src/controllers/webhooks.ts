@@ -6,7 +6,7 @@ import { CLERK_WEBHOOK_SECRET } from "../config/env";
 
 // API Controller function to manage clerk user with database
 
-export const clerkwebhooks = async (req: Request, res: Response) => {
+export const clerkwebhooks = async (req: any, res: any) => {
   try {
     const whook = new Webhook(CLERK_WEBHOOK_SECRET!);
     await whook.verify(JSON.stringify(req.body), {
