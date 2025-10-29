@@ -1,24 +1,32 @@
+// import { Webhook } from "svix";
+// controllers/webhooks.ts
 import { Webhook } from "svix";
 import { Request, Response } from "express";
-
 import User from "../models/user";
 import { CLERK_WEBHOOK_SECRET } from "../config/env";
 
-// API Controller function to manage clerk user with database
-
-export const clerkwebhooks = async (req: any, res: any) => {
+export const clerkwebhooks = async (req: Request, res: Response) => {
   try {
+    console.log("Webhook received:", req.body); // Add logging
+
     if (CLERK_WEBHOOK_SECRET) {
-      const whook = new Webhook(CLERK_WEBHOOK_SECRET!);
-      await whook.verify(JSON.stringify(req.body), {
-        "svix-id": req.headers["svix-id"] as string,
-        "svix-timestamp": req.headers["svix-timestamp"] as string,
-        "svix-signature": req.headers["svix-signature"] as string,
-      });
-    } else {
-      console.log("CLERK_WEBHOOK_SECRET is empty");
+      try {
+        const whook = new Webhook(CLERK_WEBHOOK_SECRET);
+        await whook.verify(JSON.stringify(req.body), {
+          "svix-id": req.headers["svix-id"] as string,
+          "svix-timestamp": req.headers["svix-timestamp"] as string,
+          "svix-signature": req.headers["svix-signature"] as string,
+        });
+        console.log("Webhook verification successful");
+      } catch (verifyError) {
+        console.error("Webhook verification failed:", verifyError);
+        // Decide whether to reject or proceed anyway
+        return res.status(401).json({ error: "Webhook verification failed" });
+      }
     }
     const { data, type } = req.body;
+    console.log(`Webhook type: ${type}`, data);
+
     switch (type) {
       case "user.created": {
         const userData = {
@@ -27,30 +35,87 @@ export const clerkwebhooks = async (req: any, res: any) => {
           name: data.first_name + " " + data.last_name,
           imageUrl: data.image_url || "",
         };
-        await User.create(userData);
-        res.json({});
-        break;
-      }
-      case "user.updated": {
-        const userData = {
-          email: data.email_addresses[0].email_address,
-          name: data.first_name + " " + data.last_name,
-          imageUrl: data.image_url || "",
-        };
-        await User.findByIdAndUpdate(data.id, userData);
-        res.json({});
-        break;
-      }
-      case "user.deleted": {
-        await User.findByIdAndDelete(data.id);
-        res.json({});
-        break;
+        console.log("Creating user:", userData);
+
+        try {
+          const newUser = await User.create(userData);
+          console.log("User created successfully in DB:", newUser);
+          return res.json({
+            success: true,
+            message: "User created",
+            user: newUser,
+          });
+        } catch (dbError) {
+          console.error("Database error:", dbError);
+          return res.status(500).json({
+            success: false,
+            message: "Failed to save user to database",
+            error: dbError,
+          });
+        }
       }
     }
   } catch (error: any) {
-    res.json({
+    console.error("Webhook error:", error);
+    res.status(400).json({
       success: false,
-      message: (error as Error)?.message || "internal server error",
+      message: error?.message || "Internal server error",
     });
   }
 };
+// import { Request, Response } from "express";
+
+// import User from "../models/user";
+// import { CLERK_WEBHOOK_SECRET } from "../config/env";
+
+// // API Controller function to manage clerk user with database
+
+// export const clerkwebhooks = async (req: any, res: any) => {
+//   try {
+//     console.log("webhook received:", req.body);
+//     if (CLERK_WEBHOOK_SECRET) {
+//       const whook = new Webhook(CLERK_WEBHOOK_SECRET!);
+//       await whook.verify(JSON.stringify(req.body), {
+//         "svix-id": req.headers["svix-id"] as string,
+//         "svix-timestamp": req.headers["svix-timestamp"] as string,
+//         "svix-signature": req.headers["svix-signature"] as string,
+//       });
+//     } else {
+//       console.log("CLERK_WEBHOOK_SECRET is empty");
+//     }
+//     const { data, type } = req.body;
+//     switch (type) {
+//       case "user.created": {
+//         const userData = {
+//           _id: data.id,
+//           email: data.email_addresses[0].email_address,
+//           name: data.first_name + " " + data.last_name,
+//           imageUrl: data.image_url || "",
+//         };
+//         await User.create(userData);
+//         res.json({});
+//         break;
+//       }
+//       case "user.updated": {
+//         const userData = {
+//           email: data.email_addresses[0].email_address,
+//           name: data.first_name + " " + data.last_name,
+//           imageUrl: data.image_url || "",
+//         };
+//         await User.findByIdAndUpdate(data.id, userData);
+//         res.json({});
+//         break;
+//       }
+//       case "user.deleted": {
+//         await User.findByIdAndDelete(data.id);
+//         res.json({});
+//         break;
+//       }
+//     }
+//   } catch (error: any) {
+//     res.json({
+//       success: false,
+//       message: (error as Error)?.message || "internal server error",
+//     });
+//   }
+// };
