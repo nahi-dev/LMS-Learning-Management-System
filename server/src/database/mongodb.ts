@@ -9,6 +9,9 @@ const connectToDatabase = async () => {
     await mongoose.connect(MONGODB_URI as string, {
       serverSelectionTimeoutMS: 30000,
       socketTimeoutMS: 45000,
+      bufferCommands: false,
+      maxPoolSize: 10,
+      minPoolSize: 1,
     });
     console.log("connected to the database");
     console.log("Database name:", mongoose.connection.db?.databaseName);
