@@ -2,12 +2,17 @@
 import { createContext, useEffect, useState } from "react";
 import { dummyCourses } from "../assets/assets";
 import humanizeDuration from "humanize-duration";
+import { useAuth, useUser } from "@clerk/nextjs";
 export const AppContext = createContext(null);
 export const AppContextProvider = (props) => {
   const currency = process.env.NEXT_PUBLIC_CURRENCY;
   const [allCourses, setAllCourses] = useState([]);
   const [isEducator, setIsEducator] = useState(true);
   const [enrolledCourses, setEnrolledCourses] = useState([]);
+  // This is for the backend
+  const { getToken } = useAuth();
+  const { user, isLoaded } = useUser();
+
   // Fetch All Courses
   const fetchAllCourses = async () => {
     setAllCourses(dummyCourses);
@@ -61,6 +66,23 @@ export const AppContextProvider = (props) => {
     fetchAllCourses();
     fetchUserEnrolledCourses();
   }, []);
+  // This is still for the backend
+  const logToken = async () => {
+    try {
+      console.log("Fetching token...");
+      const token = await getToken();
+      console.log("Token fetched:", token);
+    } catch (error) {
+      console.error("Error fetching token:", error);
+    }
+  };
+
+  useEffect(() => {
+    console.log("Effect triggered. User:", user);
+    if (isLoaded && user) {
+      logToken();
+    }
+  }, [isLoaded, user]);
   const value = {
     currency,
     allCourses,
