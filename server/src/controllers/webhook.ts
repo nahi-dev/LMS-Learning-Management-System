@@ -13,7 +13,7 @@ export const clerkWebhooks = async (req:any, res:any) => {
     
     // Verify webhook signature
     //  ✅ FIXED: Use the raw Buffer directly, don't stringify it
-    await whook.verify(req.body, {
+    await whook.verify(JSON.stringify(req.body), {
       "svix-id": req.headers["svix-id"],
       "svix-timestamp": req.headers["svix-timestamp"],
       "svix-signature": req.headers["svix-signature"]
