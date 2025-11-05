@@ -16,11 +16,12 @@ app.use(express.urlencoded({ extended: true })); // Parse URL-encoded bodies
 app.get("/", (req, res) => {
   res.send("API working");
 });
-app.post("/clerk", express.raw({ type: "application/json" }), clerkWebhooks);
+// app.post("/clerk", express.raw({ type: "application/json" }), clerkWebhooks);
 
 app.get("/clerk", (req,res)=>{
   res.send("clerk route")
 })
+app.post("/clerk", clerkwebhooks);
 app.listen(PORT, async () => {
   await connectToDatabase();
   console.log(`Server is running on http://localhost:${PORT}`);

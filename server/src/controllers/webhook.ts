@@ -1,65 +1,91 @@
 import { Webhook } from "svix";
+import { Request, Response } from "express";
+import mongoose from "mongoose";
 import User from "../models/user";
+import { CLERK_WEBHOOK_SECRET, MONGODB_URI } from "../config/env";
 
-// API controller function to manage clerk user with database
-export const clerkWebhooks = async (req:any, res:any) => {
+export const clerkwebhooks = async (req: Request, res: Response) => {
   try {
-    // Validate webhook secret
-    if (!process.env.CLERK_WEBHOOK_SECRET) {
-      return res.status(500).json({ success: false, message: "CLERK_WEBHOOK_SECRET not configured" });
+    console.log("Webhook received:", req.body);
+
+    // Ensure MongoDB connection is alive
+    if (mongoose.connection.readyState !== 1) {
+      console.log("Reconnecting to MongoDB...");
+      await mongoose.connect(MONGODB_URI as string);
     }
 
-    const whook = new Webhook(process.env.CLERK_WEBHOOK_SECRET);
-    
-    // Verify webhook signature
-    //  ✅ FIXED: Use the raw Buffer directly, don't stringify it
-    await whook.verify(JSON.stringify(req.body), {
-      "svix-id": req.headers["svix-id"],
-      "svix-timestamp": req.headers["svix-timestamp"],
-      "svix-signature": req.headers["svix-signature"]
-    });
+    if (CLERK_WEBHOOK_SECRET) {
+      try {
+        const whook = new Webhook(CLERK_WEBHOOK_SECRET);
+        await whook.verify(JSON.stringify(req.body), {
+          "svix-id": req.headers["svix-id"] as string,
+          "svix-timestamp": req.headers["svix-timestamp"] as string,
+          "svix-signature": req.headers["svix-signature"] as string,
+        });
+        console.log("Webhook verification successful");
+      } catch (verifyError) {
+        console.error("Webhook verification failed:", verifyError);
+        return res.status(401).json({ error: "Webhook verification failed" });
+      }
+    }
 
     const { data, type } = req.body;
-    
+    console.log(`Webhook type: ${type}`, data);
+
     switch (type) {
       case "user.created": {
         const userData = {
           _id: data.id,
           email: data.email_addresses[0].email_address,
-          name: `${data.first_name || ''} ${data.last_name || ''}`.trim(),
-          imageUrl: data.image_url
+          name: data.first_name + " " + data.last_name,
+          imageUrl: data.image_url || "",
         };
+        console.log("Creating user:", userData);
 
-        await User.create(userData);
-        res.json({ success: true, message: "User created" });
-        break;
+        try {
+          const newUser = await User.create(userData);
+          console.log("User created successfully in DB:", newUser);
+          return res.json({
+            success: true,
+            message: "User created",
+            user: newUser,
+          });
+        } catch (dbError: any) {
+          console.error("Database error:", dbError);
+          return res.status(500).json({
+            success: false,
+            message: "Failed to save user to database",
+            error: dbError.message,
+          });
+        }
       }
 
       case "user.updated": {
         const userData = {
           email: data.email_addresses[0].email_address,
-          name: `${data.first_name || ''} ${data.last_name || ''}`.trim(),
-          imageUrl: data.image_url
+          name: data.first_name + " " + data.last_name,
+          imageUrl: data.image_url || "",
         };
-        
-        await User.findByIdAndUpdate(data.id, userData, { new: true });
-        res.json({ success: true, message: "User updated" });
-        break;
+        await User.findByIdAndUpdate(data.id, userData);
+        return res.json({ success: true, message: "User updated" });
       }
 
       case "user.deleted": {
         await User.findByIdAndDelete(data.id);
-        res.json({ success: true, message: "User deleted" });
-        break;
+        return res.json({ success: true, message: "User deleted" });
       }
 
       default:
-        res.json({ success: false, message: "Unhandled event type" });
-        break;
+        return res.json({
+          success: true,
+          message: "Webhook received but not handled",
+        });
     }
-
-  } catch (error:any) {
+  } catch (error: any) {
     console.error("Webhook error:", error);
-    res.status(400).json({ success: false, message: error.message });
+    res.status(500).json({
+      success: false,
+      message: error?.message || "Internal server error",
+    });
   }
 };
