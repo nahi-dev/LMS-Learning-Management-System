@@ -21,7 +21,7 @@ app.get("/", (req, res) => {
 app.get("/clerk", (req,res)=>{
   res.send("clerk route")
 })
-app.post("/clerk", clerkwebhooks);
+app.post("/clerk", clerkWebhooks);
 app.listen(PORT, async () => {
   await connectToDatabase();
   console.log(`Server is running on http://localhost:${PORT}`);

@@ -4,7 +4,7 @@ import mongoose from "mongoose";
 import User from "../models/user";
 import { CLERK_WEBHOOK_SECRET, MONGODB_URI } from "../config/env";
 
-export const clerkwebhooks = async (req: Request, res: Response) => {
+export const clerkWebhooks = async (req: Request, res: Response) => {
   try {
     console.log("Webhook received:", req.body);
 
